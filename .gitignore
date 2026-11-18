@@ -1,0 +1,10 @@
+# Extension source is the deliverable; never commit secrets or build output
+build/
+*.zxp
+*.zip
+node_modules/
+.DS_Store
+Thumbs.db
+# Per-user secrets must never be committed (keys live in CEP userData, not here, but belt-and-braces):
+config.json
+.env

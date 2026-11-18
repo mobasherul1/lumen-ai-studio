@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Lumen AI Studio - CEP bundle manifest
+  ======================================
+  Schema Version 5.0 is correct for CEP 9 through CEP 12. The "CSXS.<n>"
+  number used in PlayerDebugMode registry/plist keys is NOT this version:
+    Illustrator v25.0 (2021)      -> CEP 10  (CSXS.10)
+    Illustrator v25.3+ .. v28     -> CEP 11  (CSXS.11)
+    Illustrator 2025 (v29)        -> CEP 12  (CSXS.12)
+  Manifest Version stays 5.0 everywhere. Host range [25.0,30.0) covers
+  Illustrator 2021 - 2025 and is forward-safe.
+
+  Host "ILST" = Adobe Illustrator.
+-->
+<ExtensionManifest xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   ExtensionBundleId="com.lumen.aistudio"
+                   ExtensionBundleVersion="1.0.0"
+                   Version="5.0">
+  <ExtensionList>
+    <Extension Id="com.lumen.aistudio.panel" Version="1.0.0" />
+  </ExtensionList>
+
+  <ExecutionEnvironment>
+    <HostList>
+      <Host Name="ILST" Version="[25.0,30.0)" />
+    </HostList>
+    <LocaleList>
+      <Locale Code="All" />
+    </LocaleList>
+    <RequiredRuntimeList>
+      <RequiredRuntime Name="CSXS" Version="5.0" />
+    </RequiredRuntimeList>
+  </ExecutionEnvironment>
+
+  <DispatchInfoList>
+    <Extension Id="com.lumen.aistudio.panel">
+      <DispatchInfo>
+        <Resources>
+          <MainPath>./index.html</MainPath>
+          <!-- Also loaded at panel startup; lets panel.js fall back to calling
+               host Lumen_* functions even if Node cannot read this file. -->
+          <ScriptPath>./jsx/lumen.jsx</ScriptPath>
+          <CEFCommandLine>
+            <!-- Node integration: enables window.cep_node / require() in the panel -->
+            <Parameter>--enable-nodejs</Parameter>
+            <!-- CEP 11/12 cookie/CORS workaround for illustrator hosts (known-field issue) -->
+            <Parameter>--disable-features=SameSiteByDefaultCookies,CookiesWithoutSameSiteMustBeSecure,NetworkService</Parameter>
+            <Parameter>--disable-site-isolation-trials</Parameter>
+            <!-- Note: CEP silently drops remote-debugging-port and ignore-certificate-errors flags; use the .debug file for inspector access. -->
+          </CEFCommandLine>
+        </Resources>
+        <Lifecycle>
+          <AutoVisible>true</AutoVisible>
+        </Lifecycle>
+        <UI>
+          <Type>Panel</Type>
+          <Menu>Lumen AI Studio</Menu>
+          <Geometry>
+            <Size><Height>560</Height><Width>340</Width></Size>
+            <MinSize><Height>430</Height><Width>260</Width></MinSize>
+            <MaxSize><Height>1400</Height><Width>900</Width></MaxSize>
+          </Geometry>
+          <Icons>
+            <!-- 23x23 @1x and name@2X.png (46x46) siblings; light + dark variants -->
+            <Icon Type="Normal">./icons/iconLight.png</Icon>
+            <Icon Type="RollOver">./icons/iconLight.png</Icon>
+            <Icon Type="DarkNormal">./icons/iconDark.png</Icon>
+            <Icon Type="DarkRollOver">./icons/iconDark.png</Icon>
+          </Icons>
+        </UI>
+      </DispatchInfo>
+    </Extension>
+  </DispatchInfoList>
+</ExtensionManifest>

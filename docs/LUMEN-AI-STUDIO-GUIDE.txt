@@ -1,0 +1,616 @@
+================================================================
+  LUMEN AI STUDIO v1.0.0  -  Illustrator
+  INSTALLATION & INTERFACE GUIDE  (plain text)
+================================================================
+  Lumen AI Studio is a dockable CEP panel for Adobe Illustrator
+  (v25 - v29, i.e. Illustrator 2021 through 2025) on Windows and
+  macOS. It adds five AI tools to Illustrator:
+
+    1. Palette Muse      - recolor artwork from a reference image
+                           (fully offline, no API key needed)
+    2. Pattern Dream     - text-to-image patterns, placed for you
+    3. Artboard Critique - vision-model critique of the artboard
+    4. Copywriter        - headline options written into your text
+    5. Vector Muse       - prompt -> SVG -> editable vector art
+
+  Support/version : v1.0.0 (November 2026)
+  Package         : LumenAIStudio-v1.0.0.zip
+  License         : Apache-2.0 (extension code). CSInterface.js
+                    (c) Adobe, CEP license - keep Adobe's header.
+  Network         : only to the AI endpoint YOU configure. No
+                    telemetry, no analytics, nothing else.
+================================================================
+   TABLE OF CONTENTS
+================================================================
+   A. WHAT IS IN THE PACKAGE
+   B. REQUIREMENTS
+   C. INSTALL - WINDOWS, EASY WAY (script)
+   D. INSTALL - WINDOWS, MANUAL WAY (zip + registry)
+   E. INSTALL - macOS, EASY WAY (script)
+   F. INSTALL - macOS, MANUAL WAY (zip + plist)
+   G. INSTALL - SIGNED .zxp (optional, for distribution)
+   H. FIRST LAUNCH & VERIFY THE PANEL
+   I. HOW IT WORKS (plain-language architecture)
+   J. THE INTERFACE, TOUR & DETAILED USAGE
+      J1. Layout: header bar, connection dot, tabs, status bar
+      J2. Settings (do this FIRST)
+      J3. Palette Muse
+      J4. Pattern Dream
+      J5. Artboard Critique
+      J6. Copywriter
+      J7. Vector Muse
+      J8. About
+   K. TIPS & WORKFLOWS
+   L. TROUBLESHOOTING
+   M. UNINSTALL
+   N. FILE LOCATIONS
+================================================================
+
+
+A. WHAT IS IN THE PACKAGE
+================================================================
+  LumenAIStudio-v1.0.0.zip contains TWO items:
+
+    LUMEN-AI-STUDIO-GUIDE.txt   <- this file
+    lumen-ai-studio/            <- the extension itself
+
+  Inside the extension folder:
+
+    CSXS/manifest.xml   the CEP bundle manifest (Version 5.0)
+    index.html          the panel UI
+    css/panel.css       styling (dark, Illustrator-like)
+    js/                 panel logic:
+      CSInterface.js      Adobe's official CEP <-> host bridge
+      node-helper.js      Node bridge: config, temp files, base64
+      api.js              HTTPS client for the AI endpoints
+      panel.js            all UI logic + k-means palette engine
+    jsx/lumen.jsx       ExtendScript host: artboard export/PNG,
+                        place files, recolor fills, write text
+    icons/               panel icons (23/46 px, light+dark)
+
+
+B. REQUIREMENTS
+================================================================
+  - Windows 10/11 or macOS 10.15+
+  - Adobe Illustrator v25 (2021) or newer (v26..v29 supported).
+    NOT compatible with Illustrator 2020 or earlier.
+  - ~50 MB free disk space
+  - For the four online features: an API key for an AI provider
+    (OpenAI, Azure OpenAI, OpenRouter, Stability AI, or a local
+    LM Studio / Ollama server). Palette Muse needs NO key.
+  - Illustrator must be CLOSED during installation (it caches the
+    extension list at startup).
+
+
+C. INSTALL - WINDOWS, EASY WAY (script)
+================================================================
+  1. Close Illustrator completely.
+  2. Open the folder that contains this project, then run in
+     PowerShell:
+
+       powershell -ExecutionPolicy Bypass -File `
+         "...\lumen-ai-studio\scripts\install-dev.ps1"
+
+     (replace ... with the real path, or 'cd' into scripts\ first)
+
+  3. The script does three things:
+       a. removes any old copy at
+          %APPDATA%\Adobe\CEP\extensions\lumen-ai-studio
+       b. copies the extension there
+       c. sets PlayerDebugMode=1 for CEP 10/11/12 under
+          HKCU\Software\Adobe\CSXS.10 / .11 / .12
+          (per-user, no admin rights needed)
+  4. Start Illustrator -> Window -> Extensions -> Lumen AI Studio.
+
+  Unsigned dev installs NEED PlayerDebugMode=1 (step 3c) or
+  Illustrator silently ignores the panel. Signed .zxp packages do
+  not need it (see section G).
+
+
+D. INSTALL - WINDOWS, MANUAL WAY (zip, step by step)
+================================================================
+  1. Close Illustrator.
+  2. Extract LumenAIStudio-v1.0.0.zip (right-click -> Extract All).
+  3. Move the extracted "lumen-ai-studio" folder into:
+
+       %APPDATA%\Adobe\CEP\extensions\
+
+     i.e. the final path must be exactly:
+
+       C:\Users\<YOU>\AppData\Roaming\Adobe\CEP\extensions\lumen-ai-studio\
+
+     IMPORTANT: that folder must directly contain CSXS\manifest.xml
+     - NOT a nested double folder like ...\lumen-ai-studio\lumen-ai-studio\
+     and the FULL PATH must not contain '#' (CEP limitation).
+  4. Enable unsigned-extension loading (one of the two):
+
+     EASIEST - run once:
+       powershell -ExecutionPolicy Bypass -File `
+         "...\lumen-ai-studio\scripts\install-dev.ps1"
+       (you can run it AFTER the manual copy; it redoes both steps)
+
+     OR BY HAND - registry:
+       a. Press Win+R, type: regedit  (Enter; accept UAC)
+       b. Navigate to HKEY_CURRENT_USER\Software\Adobe
+       c. Create keys "CSXS.10", "CSXS.11" and "CSXS.12" if missing
+          (right-click Adobe -> New -> Key)
+       d. In EACH key: right-click -> New -> String Value
+          Name : PlayerDebugMode
+          Value: 1
+       (which one you need depends on your Illustrator build:
+        v25.0 = CSXS.10, v25.3..v28 = CSXS.11, 2025 = CSXS.12 -
+        setting all three covers every version.)
+  5. Start Illustrator -> Window -> Extensions -> Lumen AI Studio.
+
+
+E. INSTALL - macOS, EASY WAY (script)
+================================================================
+  1. Close Illustrator completely.
+  2. In Terminal, run:
+
+       cd "/path/to/lumen-ai-studio/scripts"
+       chmod +x install-dev.sh
+       ./install-dev.sh
+
+  3. The script copies the extension into
+       ~/Library/Application Support/Adobe/CEP/extensions/lumen-ai-studio
+     sets PlayerDebugMode=1 for CSXS.10/11/12, and restarts cfprefsd
+     (macOS caches preferences; without the restart the flag may be
+     ignored).
+  4. Start Illustrator -> Window -> Extensions -> Lumen AI Studio.
+
+
+F. INSTALL - macOS, MANUAL WAY (zip, step by step)
+================================================================
+  1. Close Illustrator.
+  2. Double-click LumenAIStudio-v1.0.0.zip to extract it (Finder).
+     If you downloaded it from the internet, macOS may quarantine the
+     files. Either extract with Terminal:
+
+       xattr -dr com.apple.quarantine ~/Downloads/lumen-ai-studio
+
+     or grant Full Disk Access to your archive tool.
+  3. Move the "lumen-ai-studio" folder into:
+
+       ~/Library/Application Support/Adobe/CEP/extensions/
+
+     Final path must be:
+       ~/Library/Application Support/Adobe/CEP/extensions/lumen-ai-studio/
+     (CSXS/manifest.xml directly inside it.)
+  4. Enable unsigned-extension loading, in Terminal:
+
+       defaults write com.adobe.CSXS.10 PlayerDebugMode -string 1
+       defaults write com.adobe.CSXS.11 PlayerDebugMode -string 1
+       defaults write com.adobe.CSXS.12 PlayerDebugMode -string 1
+       killall cfprefsd
+
+     (killall cfprefsd - or log out and back in - is REQUIRED on
+     macOS 10.9+ or the change may not take effect.)
+  5. Start Illustrator -> Window -> Extensions -> Lumen AI Studio.
+
+
+G. INSTALL - SIGNED .zxp (for distribution / clean machines)
+================================================================
+  If you have LumenAIStudio-v1.0.0.zxp (built with scripts\package-zxp.ps1
+  and your code-signing certificate):
+
+  1. Delete any unsigned dev copy first (section M) OR set
+     PlayerDebugMode back to 0 - an unsigned copy SHADOWS a signed
+     package of the same extension id.
+  2. Remove this machine's dev keys from the mix if demoing
+     (Settings -> Clear keys - the .zxp never contains keys anyway).
+  3. Double-click the .zxp with Creative Cloud desktop installed.
+     UPIA (Unified Plugin Installer Agent) installs it system-wide.
+     No PlayerDebugMode needed.
+  4. Launch Illustrator -> Window -> Extensions -> Lumen AI Studio.
+
+  Note: Extension Manager / ExManCmd is end-of-life - do not use it.
+  Self-signed .zxp files behave like unsigned ones (Illustrator will
+  refuse them without PlayerDebugMode=1).
+
+
+H. FIRST LAUNCH & VERIFY THE PANEL
+================================================================
+  1. Illustrator -> Window -> Extensions -> Lumen AI Studio
+     A dark panel opens. Click the tabs across the top.
+  2. Optional (does NOT affect daily use): with the dev install,
+     the panel is inspectable at http://localhost:8088 (Chrome /
+     Edge DevTools front-end served by Adobe's CEP engine). The
+     .debug file enables this; it is development-only and not
+     included in signed packages.
+  3. If the panel does NOT appear or opens BLANK, jump straight to
+     section L (TROUBLESHOOTING) - 90% of issues are PlayerDebugMode
+     or '#' in the path.
+  4. Host load-failure logs (if any) are written to:
+       Windows : %TEMP%\CEP12-ILST.log  (also CEP10-/CEP11-ILST.log)
+       macOS   : ~/Library/Logs/CSXS/CEP12-ILST.log
+     Set LogLevel=6 (same registry/plist key as PlayerDebugMode) for
+     verbose logging when hunting load errors. Restart Illustrator.
+  5. Sanity check inside the panel: click the Lumen AI Studio
+     something - if the status bar at the bottom reads "Ready. (Node
+     bridge OK)", everything is wired up.
+
+
+I. HOW IT WORKS (plain-language architecture)
+================================================================
+  Illustrator talks to the panel through two distinct "worlds":
+
+   +-----------------------------------------------------------+
+   | Illustrator.exe                                           |
+   |  +---------------------+    +--------------------------+  |
+   |  | CEP PANEL (a CEF /   |    | ExtendScript engine      |  |
+   |  | Chromium window)      |    | (jsx/lumen.jsx)          |  |
+   |  |  index.html + js/*   |    |  reads/writes the        |  |
+   |  |   - UI, k-means      |    |  artboard, layers, text  |  |
+   |  |   - Settings / keys  |    |  and exports PNG         |  |
+   |  |   - HTTP via Node    |    |                          |  |
+   |  +---------+-----------+    +------------+-------------+  |
+   |            | evalScript(source + call)   |                |
+   |            +---------------------------->+                |
+   |                                          |                |
+   |  Node.js (enabled by --enable-nodejs)    |                |
+   +------------+-----------------------------+                |
+                | HTTPS (built-in Node http/https, no deps)
+                v
+      YOUR AI endpoint (OpenAI / Azure / OpenRouter / ...)
+
+  KEY POINTS
+  - The panel NEVER loads remote HTML/scripts. Only local files.
+  - HTTP requests are made by Node inside the panel process (not by
+    a browser page), straight to the Base URL YOU set in Settings -
+    no Lumen servers are involved anywhere.
+  - Only TWO kinds of data ever leave the machine (and only to your
+    configured endpoint): the artboard PNG (Critique) and your text
+    prompts (Pattern / Copy / Vector). Palette Muse sends NOTHING.
+  - Illustrator only ever sees LOCAL file paths: Lumen writes the
+    exported PNG / generated image / SVG into your OS temp folder
+    (os.tmpdir()\lumen-ai-studio) and asks Illustrator to place it.
+  - Everything Lumen places or creates lands on a layer named
+    "Lumen AI" (created on first use) - your own layers stay clean.
+  - Your API keys live in
+      CEP per-user data folder/lumen-ai-studio/config.json
+    (path shown under "Stored at" in Settings). They are never
+    inside the extension folder, never inside the .zxp, never
+    committed to git. "Clear keys" deletes them.
+  - No build step: the panel is plain HTML/CSS/JS. Edit -> reinstall.
+
+  Call chain for one action (example: Pattern Dream):
+    1. You press "Generate & place on artboard".
+    2. panel.js -> api.js -> POST {baseUrl}/images/generations
+       (or Stability v2beta) with YOUR key.
+    3. Base64 image comes back; panel writes
+       %TEMP%/lumen-ai-studio/lumen-pattern-<ts>-N.png
+    4. panel.js -> CSInterface.evalScript(jsx source + call)
+    5. jsx/lumen.jsx -> find/create "Lumen AI" layer, add placed
+       item (embedded), fit to 80% of artboard width, center (or
+       cascade by 18pt for multiples), restore your active layer.
+
+================================================================
+J. THE INTERFACE, TOUR & DETAILED USAGE
+================================================================
+J1. LAYOUT
+----------------------------------------------------------------
+  The panel is organised in four horizontal bands:
+
+  +-------------------------------------------------+
+  |  LOGO  Lumen AI Studio        (dot)   <- header |
+  |        GENERATIVE TOOLS ...                      |
+  |  [Palette][Pattern][Critique][Copy][Vector][Set][About]| <- tabs
+  |  +---------------------------------------------+ |
+  |  |  TAB CONTENT (scrolls)                      | |
+  |  +---------------------------------------------+ |
+  |  (dot) Ready. ...                  <- status bar |
+  +-------------------------------------------------+
+
+  - The small coloured DOT in the header:
+      grey  = endpoint not tested yet / unknown
+      green = "Test connection" succeeded (your key works)
+      red   = endpoint error - open Settings, check the message
+  - The STATUS BAR at the bottom narrates every action
+    ("Exporting artboard...", "Critique complete.").
+  - TOASTS (bottom-center pop-ups) confirm results or show errors.
+    Error toasts carry the FULL upstream error (e.g. HTTP 401 -
+    Invalid API key) - read them, they are almost always
+    misconfiguration, not a bug.
+  - Every tab is usable with keyboard focus (Tab / Shift+Tab); the
+    Palette reference drop zone also accepts Enter/Space.
+
+J2. SETTINGS  - do this FIRST (its tab is on the far right)
+----------------------------------------------------------------
+  Fields:
+    Provider preset   Choose one:
+                        OpenAI        - api.openai.com/v1
+                        OpenRouter    - openrouter.ai/api/v1
+                        Azure OpenAI  - YOUR resource /openai/v1
+                        Stability AI  - api.stability.ai (images)
+                        LM Studio     - localhost:1234/v1
+                        Ollama        - localhost:11434/v1
+                        Custom        - anything OpenAI-compatible
+                      Picking a preset FILLS IN base URL + sensible
+                      default models. You can edit everything.
+
+    Base URL          The API root. Examples:
+                        OpenAI      https://api.openai.com/v1
+                        Azure       https://<res>.openai.azure.com/openai/v1
+                        OpenRouter  https://openrouter.ai/api/v1
+                        Ollama      http://localhost:11434/v1
+                      (Azure: Chat/Vision/Image model fields take your
+                       DEPLOYMENT NAMES, not base model names, and the
+                       key is sent as the 'api-key' header - handled
+                       automatically.)
+
+    API key           Your key (sk-...). Stored as PLAINTEXT in the
+                      per-user config file (see N/FILE LOCATIONS);
+                      it never enters the extension. Click Show to
+                      reveal / Hide to mask.
+
+    Chat model        Text model for Copywriter + Vector Muse.
+                      Default (OpenAI): gpt-4o
+    Vision model      Critique model. Default (OpenAI): gpt-4o
+                      (must be vision-capable)
+    Image model       Pattern Dream model. Default: gpt-image-2.5-flare
+                      (gpt-image-1 was shut down in Oct 2026)
+    Image endpoint    Path appended to Base URL for image calls.
+                      Default "/images/generations".
+                      Stability preset ignores this (v2beta is fixed).
+
+  Buttons (left to right):
+    [Save]            Persists everything to the per-user config file
+                      (path shown in the summary below the button)
+    [Test connection] Sends a 1-token ping (Stability: reads your
+                      credit balance, zero cost). Header dot turns
+                      green/red; result in status bar + toast.
+    [Clear keys]      Deletes the stored key for the CURRENT provider
+                      only (other providers' keys stay).
+
+  Below the buttons, a live summary shows Provider / Base URL /
+  masked key (last 4 chars) / Chat model / Image model / the exact
+  config-file path on disk.
+
+  TYPICAL SETUP, FIRST TIME:
+    1. Provider preset:        OpenAI
+    2. API key:                sk-... (paste)
+    3. [Save]  -> toast "Keys saved..."
+    4. [Test connection] -> dot green, toast "Chat OK - model
+       replied: pong"
+    Done - the other four tabs now work.
+
+J3. PALETTE MUSE  (works 100% offline - no key required)
+----------------------------------------------------------------
+  USE WHEN: you have a client photo / mood board and want your
+  vector artwork to live in the same color family.
+
+  1. Click the dashed "Drop an image here, or click to browse..."
+     zone (or drag an image onto it).
+  2. Set Colors: 3-8 (default 5). Click [Extract palette].
+     Swatches appear below, darkest on the left. The algorithm is
+     k-means on your image, quantizing; transparent pixels are
+     ignored; images are downscaled to 128px internally for speed.
+  3. On the artboard, SELECT the vector artwork (paths, compound
+     paths, groups, whole text frames - anything with RGB/Gray/CMYK
+     flat fills).
+  4. Click [Apply to selection].
+     Result: fills are recolored dark->light onto palette
+     dark->light (relative luminance ranking). It is ONE undo step
+     (Ctrl/Cmd+Z).
+
+  Notes / gotchas:
+   - Gradient & pattern fills, spot colors and placed rasters are
+     skipped (reported as "X skipped" in the toast).
+   - CMYK-origin docs get CMYK fills written back (no RGB bleed).
+   - [Clear] resets only the panel state - it does NOT touch the
+     document.
+
+J4. PATTERN DREAM  (needs image-capable key)
+----------------------------------------------------------------
+  USE WHEN: textiles, packaging surfaces, backgrounds, tiles.
+
+  1. Type a prompt. Be specific; mention repeat/tile style:
+       "hand-drawn indigo botanical line art on cream,
+        seamless repeat, flat print look, muted palette"
+  2. Optional: Ambience style tag ("risograph, bauhaus, art deco,
+     japandi, ...") appended to the prompt automatically.
+  3. Size: 1024x1024 (square tile), 1536x1024 (wide), 1024x1536
+     (tall), or Auto (model default).
+  4. Count: 1-4 variations. With Count>1 they cascade diagonally.
+  5. Click [Generate & place on artboard].
+     - Status bar narrates: "Generating..." -> "Placing image N..."
+     - Wait 10-60s (server-side image gen is slow).
+     - Result: each image is written to temp, EMBEDDED into the
+       document (no broken links later), centered at 80% of the
+       artboard width, on layer "Lumen AI".
+
+  To make a true repeating swatch in Illustrator:
+    select the placed image -> Object -> Pattern -> Make.
+
+  If you get HTTP 400/404: your image model id or imagePath is
+  wrong for that provider (see the toast's upstream body).
+  gpt-image-2.5-flare serves /images/generations on OpenAI.
+
+J5. ARTBOARD CRITIQUE  (needs vision-capable key)
+----------------------------------------------------------------
+  USE WHEN: before sending to print / before dev handoff - a fast
+  second pair of eyes.
+
+  1. Make the artboard to review the ACTIVE one (click it).
+  2. Review focus:
+       General design review        broad art-director pass
+       Composition & balance        weight, alignment, grid, space
+       Contrast & legibility        text/bg separation, print+web
+       Typography & hierarchy       type pairing, sizes, leading
+       Brand consistency            palette/type/iconography fit
+       Accessibility (WCAG 2.1)     contrast ratios, color-blind
+  3. Click [Critique current artboard].
+     - Lumen exports ONLY the active artboard as PNG (clipped,
+       scaled down to <=1568px on the long edge) to temp.
+     - Sends it to YOUR vision model. Typical wait: 5-20s.
+     - The critique appears as selectable text below the button
+       (paste-ready).
+
+  Privacy: only the PNG of the artboard leaves your machine, and
+  only to your configured endpoint. Nothing else is uploaded.
+
+J6. COPYWRITER  (needs chat key)
+----------------------------------------------------------------
+  USE WHEN: you need headline/subcopy fast while layout is open.
+
+  1. Brief - one or two sentences: what, for whom, desired feeling.
+       "Landing-page headline for a small-batch specialty coffee
+        roastery; audience: young professionals; tone: warm,
+        confident, no cliches."
+  2. Tone: confident / playful / editorial / minimal / luxurious /
+     technical / urgent.
+  3. Options: 3-6 (default 4).
+  4. [Generate options] -> numbered option cards appear.
+  5. Per option, click [Use]:
+       a. If exactly ONE text frame is selected on the artboard,
+          its contents are replaced. Undo = one Ctrl/Cmd+Z.
+       b. If a text RANGE is selected, only that range changes.
+       c. Otherwise a NEW point-text frame is created on the
+          "Lumen AI" layer, centered on the active artboard.
+
+J7. VECTOR MUSE  (needs chat key)
+================================================================
+  USE WHEN: quick icon drafts, badges, spot illustrations.
+
+  1. Describe the mark - geometry, colors, negative space:
+       "flat geometric heron in flight inside a thin circle,
+        two-color navy & coral, generous negative space"
+  2. Complexity: Simple (icons) / Medium (spot illustration).
+  3. Canvas: 256 / 512 / 1024 px (internal viewBox size).
+  4. [Generate & place SVG]
+     - The model returns raw SVG; Lumen slices out the <svg>..</svg>
+       block, runs a safety check (no <script>, no event handlers,
+       no external refs), saves to temp, then imports via
+       Illustrator's groupItems.createFromFile() - a REAL editable
+       group of PathItems (not an opaque linked "placed" object).
+     - Placed on "Lumen AI" layer at 50% artboard width.
+
+  Editing afterwards: the group is native artwork - ungroup,
+  recolor, apply Pathfinder operations freely.
+
+  If the model returns mush: simplify the prompt, ask for "flat"
+  shapes, or use fewer colors. Complex scenes belong in Pattern
+  Dream (raster), not SVG.
+
+J8. ABOUT  (credits and links)
+================================================================
+  A short page with the extension version, a one-line feature
+  summary, the author (Md. Mobasherul Hasan), and a button that
+  opens the author's profile at mobasherul1.github.io in your
+  system browser. It also shows the copyright line:
+  "(c) 2026 Md. Mobasherul Hasan - Apache-2.0 license;
+   CSInterface.js (c) Adobe Systems Incorporated (CEP license)."
+  No data of any kind is sent anywhere from this tab.
+
+================================================================
+K. TIPS & WORKFLOWS
+================================================================
+  - Keep the panel docked next to Layers; toggle the "Lumen AI"
+    layer's visibility like a scratch layer; move/lock its items
+    when done. Everything Lumen creates is on that one layer.
+  - Recolor -> critique loop: Palette Muse to match the client
+    brief, Critique for a WCAG pass, ship.
+  - Ctrl/Cmd+Z undoes every canvas action Lumen takes (recolor,
+    text insertion; placed items just delete with one Undo too).
+  - For batch palette work: open each reference, extract, apply -
+    the panel keeps state between tabs.
+  - If Test connection passes but a feature fails, read the toast:
+    90% of the time it's the model field (e.g. image model name
+    OpenAI no longer serves) - paste the EXACT model id your
+    provider documents.
+
+
+L. TROUBLESHOOTING
+================================================================
+  PANEL NOT IN Window -> Extensions:
+    - Illustrator not restarted after install (it caches at launch).
+    - PlayerDebugMode not set (or set in the wrong CSXS.<n> for
+      your build - check with:
+        reg query HKCU\Software\Adobe\CSXS.12 /v PlayerDebugMode
+        (should read "1")   macOS:
+        defaults read com.adobe.CSXS.12 PlayerDebugMode
+    - '#' anywhere in the extension path.
+    - Folder nested twice (...\lumen-ai-studio\lumen-ai-studio\
+      \CSXS\manifest.xml must exist directly).
+    - Both a system-wide AND a user-level copy exist and disagree;
+      delete the stale one.
+  PANEL OPENS BLANK / GREY:
+    - Unsigned copy + PlayerDebugMode missing -> set it (D4/F4).
+    - CEP 11/12 cookie issue: confirm manifest has the
+      --disable-features=SameSiteByDefaultCookies... parameter
+      (it ships with the extension).
+    - Delete stale copies in BOTH the system-wide and per-user CEP
+      folders (per-user wins only within its own install).
+  "Node bridge MISSING" in status bar:
+    - Host predates CEP 6.1 (impossible for v25+), or
+      --enable-nodejs was removed from the manifest, or
+      another extension corrupted the CEP cache. Reinstall via C/E
+      (script does a clean copy).
+  Error toasts:
+    HTTP 401  - wrong key for this provider (or key for OpenAI used
+                on OpenRouter etc.)
+    HTTP 402  - Stability: out of credits
+    HTTP 404  - wrong model id / imagePath for this provider
+    HTTP 429  - rate limit; wait, or use a different model/tier
+    HTTP 4xx with "Invalid schema" - your gateway differs; if
+                LM Studio/Ollama: switch token used is fine; check
+                that Base URL ends with /v1
+  Keys don't save:
+    - The CEP userData folder is not writable (rare); Settings shows
+      the exact path under "Stored at" - check permissions on it.
+  Buttons do nothing:
+    - Lumen-host ops need an OPEN DOCUMENT; open/save a document first.
+  Critique very slow / payload too large:
+    - ExtendScript exports PNG at <=1568px long edge by design; if
+      your artboard is huge, the Vision API still bills many tokens.
+  macOS says "damaged/cannot be opened" for the zip: quarantine -
+    see F-2 (xattr -dr com.apple.quarantine).
+  Panel shows stale version after update: duplicate bundles (system
+    vs user folder) - remove the old copy.
+  Debug logs: Windows %TEMP%\CEP<ver>-ILST.log ; macOS
+    ~/Library/Logs/CSXS/. Set LogLevel=6 in the same place as
+    PlayerDebugMode for verbose load logs; restart Illustrator.
+
+
+M. UNINSTALL
+================================================================
+  Windows:
+    1. Illustrator closed.
+    2. Delete: %APPDATA%\Adobe\CEP\extensions\lumen-ai-studio
+    3. (Optional) set PlayerDebugMode back to 0 / delete the
+       CSXS.10/11/12 values - needed only if you don't want other
+       unsigned extensions anymore.
+  macOS:
+    1. Illustrator closed.
+    2. Delete: ~/Library/Application Support/Adobe/CEP/extensions/lumen-ai-studio
+    3. Optional: defaults delete com.adobe.CSXS.10/.11/.12 PlayerDebugMode; killall cfprefsd
+  Keys: Settings -> Clear keys BEFORE deleting if you want the
+    stored keys gone too; or delete the config file at the path
+    shown in Settings (section N).
+  Temp files: %TEMP%\lumen-ai-studio (Win) / $TMPDIR/lumen-ai-studio (mac) - safe to delete.
+
+
+N. FILE LOCATIONS
+================================================================
+  Extension (dev install):
+    Win : %APPDATA%\Adobe\CEP\extensions\lumen-ai-studio\
+    Mac : ~/Library/Application Support/Adobe/CEP/extensions/lumen-ai-studio/
+  Stored API keys (per-user):
+    Win : <CEP userData>\lumen-ai-studio\config.json
+          (e.g. C:\Users\<YOU>\AppData\Roaming\Adobe\CSXS\cfs88...\
+           -- exact path shown in the panel under Settings -> Stored at)
+    Mac : ~/Library/Application Support/Adobe/CSXS/.../lumen-ai-studio/config.json
+          (exact path shown in the panel; plaintext JSON, per-provider)
+  Temp files (artboard PNGs, generated images, SVGs):
+    Win : %TEMP%\lumen-ai-studio\
+    Mac : $TMPDIR/lumen-ai-studio/
+  CEP load logs:
+    Win : %TEMP%\CEP<ver>-ILST.log    (ver = 10/11/12)
+    Mac : ~/Library/Logs/CSXS/CEP<ver>-ILST.log
+
+================================================================
+  END OF GUIDE - Lumen AI Studio v1.0.0
+  Source: Documents\extension test\lumen-ai-studio
+  Build : LumenAIStudio-v1.0.0.zip
+================================================================

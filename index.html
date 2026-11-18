@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<!--
+  Lumen AI Studio — CEP panel markup. Seven tabs; last is About (credits).
+  Load order at the bottom matters: CSInterface -> node-helper -> panel.
+  All AI calls happen through the local HTTP helper in js/api.js; no remote
+  scripts or stylesheets are ever loaded into the panel.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <!-- Restricts what the panel may load/execute. All assets are local. -->
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'" />
+  <title>Lumen AI Studio</title>
+  <link rel="stylesheet" href="css/panel.css" />
+</head>
+<body>
+<div id="app">
+
+  <!-- Brand bar + connection indicator -->
+  <header id="brand">
+    <div class="logo" aria-hidden="true">L</div>
+    <div class="titles">
+      <h1>Lumen AI Studio</h1>
+      <small>Generative tools for Illustrator</small>
+    </div>
+    <div id="conn-dot" title="API connection status"></div>
+  </header>
+
+  <!-- Tab navigation: one tab per AI capability -->
+  <nav id="tabs" role="tablist">
+    <button class="tab active" data-tab="palette" role="tab">Palette Muse</button>
+    <button class="tab" data-tab="pattern" role="tab">Pattern Dream</button>
+    <button class="tab" data-tab="critique" role="tab">Artboard Critique</button>
+    <button class="tab" data-tab="copy"    role="tab">Copywriter</button>
+    <button class="tab" data-tab="vector"  role="tab">Vector Muse</button>
+    <button class="tab" data-tab="settings" role="tab">Settings</button>
+    <button class="tab" data-tab="about" role="tab">About</button>
+  </nav>
+
+  <main id="content">
+
+    <!-- ============ 1 · PALETTE MUSE (offline k-means, no API key) ============ -->
+    <section class="page active" id="page-palette" role="tabpanel">
+      <div class="card">
+        <h2>Palette Muse <span class="chip">Offline</span></h2>
+        <p class="hint">Pick a reference image. Lumen extracts its dominant colors with k-means and remaps the fills of your <em>selected artwork</em> onto that palette, darkest to lightest.</p>
+
+        <div id="drop-zone" tabindex="0" role="button" aria-label="Load reference image">
+          <span id="drop-label">Drop an image here, or click to browse…</span>
+          <img id="drop-preview" alt="Reference preview" hidden />
+        </div>
+        <input type="file" id="palette-file" accept="image/*" hidden />
+
+        <div class="row tight">
+          <label class="fld" style="flex:0 0 auto">Colors
+            <select id="palette-count" style="width:64px">
+              <option>3</option><option>4</option><option selected>5</option><option>6</option><option>8</option>
+            </select>
+          </label>
+          <button class="btn" id="btn-extract" disabled>Extract palette</button>
+          <button class="btn ghost small" id="btn-clear-palette">Clear</button>
+        </div>
+
+        <div id="palette-out" aria-live="polite"></div>
+
+        <div class="row">
+          <button class="btn primary" id="btn-apply-palette" disabled>Apply to selection</button>
+        </div>
+        <p class="hint" id="palette-note">Select vector artwork (paths, groups, compound paths) on the artboard, then apply. Text fills included.</p>
+      </div>
+    </section>
+
+    <!-- ============ 2 · PATTERN DREAM (text-to-image) ============ -->
+    <section class="page" id="page-pattern" role="tabpanel">
+      <div class="card">
+        <h2>Pattern Dream <span class="chip">Image API</span></h2>
+        <p class="hint">Describe a tileable surface. Lumen renders it with your configured image model and places it on the <strong>Lumen AI</strong> layer as an embedded raster you can recolor or pattern-swatch.</p>
+
+        <label class="fld">Prompt
+          <textarea id="pattern-prompt" placeholder="e.g. hand-drawn indigo botanical line art on cream, seamless, flat vector look, muted heritage palette"></textarea>
+        </label>
+
+        <div class="row">
+          <label class="fld">Size
+            <select id="pattern-size">
+              <option value="1024x1024" selected>1024 × 1024</option>
+              <option value="1536x1024">1536 × 1024 (wide)</option>
+              <option value="1024x1536">1024 × 1536 (tall)</option>
+              <option value="auto">Auto (model default)</option>
+            </select>
+          </label>
+          <label class="fld">Count
+            <select id="pattern-count"><option>1</option><option>2</option><option>3</option><option>4</option></select>
+          </label>
+        </div>
+
+        <label class="fld">Ambience (optional style tag)
+          <input type="text" id="pattern-style" placeholder="e.g. risograph, bauhaus, japandi, art deco…" />
+        </label>
+
+        <button class="btn primary" id="btn-pattern">Generate &amp; place on artboard</button>
+      </div>
+    </section>
+
+    <!-- ============ 3 · ARTBOARD CRITIQUE (vision LLM) ============ -->
+    <section class="page" id="page-critique" role="tabpanel">
+      <div class="card">
+        <h2>Artboard Critique <span class="chip">Vision API</span></h2>
+        <p class="hint">Lumen exports the current artboard as a PNG and asks your vision model to critique composition, hierarchy, contrast and typography. Nothing leaves the machine except that PNG, sent to your configured endpoint.</p>
+
+        <label class="fld">Review focus
+          <select id="critique-focus">
+            <option value="general">General design review</option>
+            <option value="composition">Composition &amp; balance</option>
+            <option value="contrast">Contrast &amp; legibility (print/web)</option>
+            <option value="typography">Typography &amp; hierarchy</option>
+            <option value="brand">Brand consistency</option>
+            <option value="accessibility">Accessibility (WCAG contrast)</option>
+          </select>
+        </label>
+
+        <button class="btn primary" id="btn-critique">Critique current artboard</button>
+        <pre class="output" id="critique-out" hidden></pre>
+      </div>
+    </section>
+
+    <!-- ============ 4 · COPYWRITER (chat LLM → selected text frames) ============ -->
+    <section class="page" id="page-copy" role="tabpanel">
+      <div class="card">
+        <h2>Copywriter <span class="chip">Text API</span></h2>
+        <p class="hint">Generate headline/subcopy options from a brief, then write one straight into the <em>selected text frame</em> on the artboard — or create a new frame if nothing is selected.</p>
+
+        <label class="fld">Brief
+          <textarea id="copy-brief" placeholder="e.g. Landing-page headline for a small-batch specialty coffee roastery in Dhaka; audience: young professionals; tone: warm, confident, no clichés"></textarea>
+        </label>
+        <div class="row">
+          <label class="fld">Tone
+            <select id="copy-tone">
+              <option>confident</option><option>playful</option><option>editorial</option>
+              <option>minimal</option><option>luxurious</option><option>technical</option><option>urgent</option>
+            </select>
+          </label>
+          <label class="fld">Options
+            <select id="copy-count"><option>3</option><option selected>4</option><option>5</option><option>6</option></select>
+          </label>
+        </div>
+        <button class="btn primary" id="btn-copy">Generate options</button>
+        <div id="copy-out" style="display:flex;flex-direction:column;gap:6px"></div>
+      </div>
+    </section>
+
+    <!-- ============ 5 · VECTOR MUSE (LLM → SVG → placed, scalable) ============ -->
+    <section class="page" id="page-vector" role="tabpanel">
+      <div class="card">
+        <h2>Vector Muse <span class="chip">Text API</span></h2>
+        <p class="hint">Describe a simple flat graphic — icon, badge, spot illustration. Lumen asks the model for raw SVG, validates it, and places it on the artboard as scalable vector.</p>
+
+        <label class="fld">Describe the vector
+          <textarea id="vector-prompt" placeholder="e.g. a flat geometric logo mark of a heron in flight inside a thin circle, two-color, navy and coral, generous negative space"></textarea>
+        </label>
+        <div class="row">
+          <label class="fld">Complexity
+            <select id="vector-complexity"><option value="simple" selected>Simple (icon)</option><option value="medium">Medium (spot illustration)</option></select>
+          </label>
+          <label class="fld">Canvas
+            <select id="vector-size"><option value="256" selected>256 px</option><option value="512">512 px</option><option value="1024">1024 px</option></select>
+          </label>
+        </div>
+        <button class="btn primary" id="btn-vector">Generate &amp; place SVG</button>
+        <pre class="output" id="vector-out" hidden></pre>
+      </div>
+    </section>
+
+    <!-- ============ 6 · SETTINGS (keys live in userData, never in source) ============ -->
+    <section class="page" id="page-settings" role="tabpanel">
+      <div class="card">
+        <h2>Connection</h2>
+        <label class="fld">Provider preset
+          <select id="cfg-provider">
+            <option value="openai">OpenAI (api.openai.com)</option>
+            <option value="openrouter">OpenRouter (openrouter.ai)</option>
+            <option value="azure">Azure OpenAI (own resource)</option>
+            <option value="stability">Stability AI (images only)</option>
+            <option value="lmstudio">LM Studio (localhost:1234)</option>
+            <option value="ollama">Ollama (localhost:11434)</option>
+            <option value="custom">Custom OpenAI-compatible</option>
+          </select>
+        </label>
+        <label class="fld">Base URL
+          <input type="text" id="cfg-baseurl" placeholder="https://api.openai.com/v1" autocomplete="off" spellcheck="false" />
+        </label>
+        <div class="row">
+          <label class="fld">API key
+            <input type="password" id="cfg-key" placeholder="sk-…" autocomplete="off" spellcheck="false" />
+          </label>
+          <button class="btn ghost small" id="btn-toggle-key" type="button" style="align-self:end">Show</button>
+        </div>
+        <div class="row">
+          <label class="fld">Chat model<input type="text" id="cfg-chatmodel" placeholder="gpt-4o" spellcheck="false" /></label>
+          <label class="fld">Vision model<input type="text" id="cfg-visionmodel" placeholder="gpt-4o" spellcheck="false" /></label>
+        </div>
+        <label class="fld">Image model<input type="text" id="cfg-imagemodel" placeholder="gpt-image-2.5-flare" spellcheck="false" /></label>
+        <label class="fld">Image endpoint path <span class="hint">(appended to Base URL)</span>
+          <input type="text" id="cfg-imagepath" placeholder="/images/generations" spellcheck="false" />
+        </label>
+
+        <div class="row tight">
+          <button class="btn primary small" id="btn-save-cfg">Save</button>
+          <button class="btn small" id="btn-test-cfg">Test connection</button>
+          <button class="btn danger small" id="btn-clear-cfg">Clear keys</button>
+        </div>
+        <dl class="kv" id="cfg-summary" aria-live="polite"></dl>
+      </div>
+
+      <div class="card">
+        <h2>How keys are stored</h2>
+        <p class="hint">Keys are written to <code>lumen-ai-studio/config.json</code> inside the CEP per-user data folder — never into the extension source, never into the .zxp. Delete them any time with <strong>Clear keys</strong>. Nothing is transmitted except to the Base URL you set.</p>
+        <p class="hint">Illustrator &rarr; <strong>Window → Extensions → Lumen AI Studio</strong> opens this panel.</p>
+      </div>
+    </section>
+
+    <!-- ============ 7 · ABOUT (credits) ============ -->
+    <section class="page" id="page-about" role="tabpanel">
+      <div class="card about-hero">
+        <div class="logo-big" aria-hidden="true">L</div>
+        <div class="about-name">Lumen AI Studio</div>
+        <div class="about-role">v1.0.0 &middot; Generative AI tools for Adobe Illustrator</div>
+        <p class="hint" style="text-align:center; justify-content:center">Palette recoloring &middot; pattern generation &middot; artboard critique &middot; copywriting &middot; SVG generation — natively inside the Illustrator workflow.</p>
+      </div>
+
+      <div class="card">
+        <h2>About the author</h2>
+        <p class="about-author">Built by <strong>Md. Mobasherul Hasan</strong></p>
+        <p class="hint">An independent project exploring practical generative-AI workflows inside professional vector tooling.</p>
+        <div class="row tight">
+          <button class="btn small" id="btn-github" type="button">Open GitHub profile</button>
+        </div>
+        <p class="hint mono">mobasherul1.github.io</p>
+      </div>
+
+      <div class="card">
+        <h2>Legal</h2>
+        <p class="hint">&copy; 2026 Md. Mobasherul Hasan — Apache-2.0 license.<br>CSInterface.js &copy; Adobe Systems Incorporated (CEP license).<br>Your artwork and your API keys remain yours.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Persistent status bar -->
+  <footer id="statusbar"><span class="st-icon" id="st-icon">●</span><span id="st-text">Ready.</span></footer>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<!-- Script load order is deliberate -->
+<script src="js/CSInterface.js"></script>
+<script src="js/node-helper.js"></script>
+<script src="js/api.js"></script>
+<script src="js/panel.js"></script>
+</body>
+</html>

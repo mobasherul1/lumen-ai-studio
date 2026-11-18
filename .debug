@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Development-only remote debugging ports.
+  With PlayerDebugMode=1, Illustrator exposes this panel at
+  http://localhost:8088 — open it in Chrome/Edge and inspect console/network.
+  This file is IGNORED for signed builds; it never ships secrets.
+-->
+<ExtensionList>
+  <Extension Id="com.lumen.aistudio.panel">
+    <HostList>
+      <Host Name="ILST" Port="8088" />
+    </HostList>
+  </Extension>
+</ExtensionList>
